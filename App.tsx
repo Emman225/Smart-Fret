@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 
 // --- Type Definitions ---
 interface Livraison {
@@ -57,9 +58,33 @@ const LoginPage: React.FC<{ onLogin: (user: string, pass: string) => void }> = (
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(username, password);
+    
+    // Vérifier que les champs ne sont pas vides
+    if (!username.trim() || !password.trim()) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Champs manquants',
+        text: 'Veuillez remplir tous les champs',
+        confirmButtonColor: '#3085d6',
+      });
+      return;
+    }
+    
+    try {
+      // Appeler la fonction de connexion
+      onLogin(username, password);
+    } catch (error) {
+      // Gérer les erreurs de connexion
+      console.error('Erreur de connexion:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Échec de la connexion',
+        text: 'Nom d\'utilisateur ou mot de passe incorrect',
+        confirmButtonColor: '#d33',
+      });
+    }
   };
 
   return (
@@ -106,7 +131,7 @@ const LoginPage: React.FC<{ onLogin: (user: string, pass: string) => void }> = (
 // ============================================================================
 // --- 2. FORM PAGE COMPONENT (The main app we built) ---
 // ============================================================================
-const FormHeader: React.FC<{ onNavigateBack: () => void }> = ({ onNavigateBack }) => {
+const FormHeader: React.FC<{ onNavigateBack: () => void; onSave?: () => void }> = ({ onNavigateBack, onSave }) => {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -188,20 +213,99 @@ const FormHeader: React.FC<{ onNavigateBack: () => void }> = ({ onNavigateBack }
                         {openMenu === 'Paramètres' && renderMenu(parametresMenu)}
                     </div>
                 </div>
-                <button
-                    onClick={onNavigateBack}
-                    className="flex items-center text-sm px-4 py-2 hover:bg-gray-300 rounded-md mx-2"
-                    aria-label="Retour à l'accueil"
-                >
-                    <span className="mr-2" aria-hidden="true">{icons.close}</span>
-                    Retour
-                </button>
+                <div className="flex items-center">
+                    {onSave && (
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onSave();
+                            }}
+                            className="flex items-center text-sm px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-md mx-2 transition-colors"
+                            aria-label="Enregistrer les modifications"
+                        >
+                            <span className="mr-2" aria-hidden="true">💾</span>
+                            Enregistrer
+                        </button>
+                    )}
+                    <button
+                        onClick={onNavigateBack}
+                        className="flex items-center text-sm px-4 py-2 hover:bg-gray-300 rounded-md mx-2"
+                        aria-label="Retour à l'accueil"
+                    >
+                        <span className="mr-2" aria-hidden="true">{icons.close}</span>
+                        Retour
+                    </button>
+                </div>
             </nav>
         </header>
     );
 };
 
 const FormPage: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigate }) => {
+    // Fonction de sauvegarde des données
+    const handleSave = async () => {
+        try {
+            // Afficher l'indicateur de chargement
+            Swal.fire({
+                title: 'Enregistrement en cours',
+                text: 'Veuillez patienter...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Simuler un délai pour la sauvegarde
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const dataToSave = {
+                livraisons,
+                prixUnitaires,
+                reglements,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Données à sauvegarder:', dataToSave);
+            
+            // Sauvegarder dans le localStorage
+            localStorage.setItem('savedFormData', JSON.stringify(dataToSave));
+            
+            // Afficher le message de succès
+            Swal.fire({
+                icon: 'success',
+                title: 'Succès!',
+                text: 'Les données ont été enregistrées avec succès!',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+            });
+            
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde:', error);
+            
+            // Afficher le message d'erreur
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur',
+                text: 'Une erreur est survenue lors de la sauvegarde des données.',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#d33',
+            });
+        }
+    };
+    
+    // Récupérer les données sauvegardées au chargement
+    useEffect(() => {
+        const savedData = localStorage.getItem('savedFormData');
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                console.log('Données récupérées:', parsedData);
+                // Vous pouvez ici restaurer les données si nécessaire
+            } catch (error) {
+                console.error('Erreur lors de la lecture des données sauvegardées:', error);
+            }
+        }
+    }, []);
     // --- States ---
   const [livraisons, setLivraisons] = useState<Livraison[]>([]);
   const [newLivraison, setNewLivraison] = useState<Partial<Livraison>>({ quantite: '', designation: '', fob: '' });
@@ -339,7 +443,10 @@ const FormPage: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigate
 
     return (
         <div className="h-screen flex flex-col font-sans bg-[#6b7db3]">
-            <FormHeader onNavigateBack={() => onNavigate('home')} />
+            <FormHeader 
+                onNavigateBack={() => onNavigate('home')} 
+                onSave={handleSave}
+            />
             <div className="flex-grow p-2 min-h-0">
                 <div className="h-full grid grid-cols-12 grid-rows-[4fr_1fr] gap-2">
                     {/* Col 1 */}
@@ -682,7 +789,7 @@ function App() {
       setIsLoggedIn(true);
       setCurrentPage('home'); 
     } else {
-      alert('Nom d\'utilisateur ou mot de passe incorrect.');
+      throw new Error('Nom d\'utilisateur ou mot de passe incorrect');
     }
   };
 
