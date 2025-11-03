@@ -1,0 +1,5 @@
+{
+  "name": "Logistics Management Dashboard",
+  "description": "A web application to reproduce a logistics and delivery file management system, featuring detailed forms for administrative, customs, and payment information.",
+  "requestFramePermissions": []
+}
