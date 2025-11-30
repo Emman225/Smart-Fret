@@ -1,0 +1,16 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "https://api.acexgroupe.com/api/:path*"
+        },
+        {
+            "source": "/sanctum/:path*",
+            "destination": "https://api.acexgroupe.com/sanctum/:path*"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
