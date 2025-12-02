@@ -58,7 +58,7 @@ const FormSection: React.FC<{ title: string; children: React.ReactNode; classNam
 const CompactFieldWrapper: React.FC<{ label: string; children: React.ReactNode; error?: string, className?: string }> = ({ label, children, error, className = '' }) => (
     <div className={className}>
         <div className="grid grid-cols-3 items-center gap-2">
-            <label className="col-span-1 text-xs font-medium text-slate-700 text-right pr-2">{label}</label>
+            <label className="col-span-1 text-xs font-medium text-slate-700 text-left pr-2">{label}</label>
             <div className="col-span-2">
                 {children}
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
@@ -319,7 +319,7 @@ const DossierFormPage: React.FC = () => {
         const props = type === 'number' ? { valueAsNumber: true } : {};
         return (
             <div className="grid grid-cols-3 items-center gap-2">
-                <label className="col-span-1 text-xs font-medium text-slate-500 text-right pr-2">{label}</label>
+                <label className="col-span-1 text-xs font-medium text-slate-500 text-left pr-2">{label}</label>
                 <div className="col-span-2">
                     <Input
                         type={type}

@@ -117,14 +117,14 @@ const NavItem: React.FC<NavItemProps> = ({ to, label, icon, isSubItem = false, i
                 ${baseClasses} ${layoutClasses} 
                 ${isActive
                     ? (isSubItem
-                        ? 'text-blue-400 bg-blue-500/10'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20')
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}
+                        ? 'bg-[#1c3d94] text-white'
+                        : 'bg-[#1c3d94] text-white')
+                    : 'text-white hover:bg-[#1c3d94]'}
             `}
         >
             {({ isActive }) => (
                 <>
-                    <span className={`flex-shrink-0 transition-colors duration-200 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'} ${isSubItem ? 'scale-90' : ''}`}>
+                    <span className={`flex-shrink-0 transition-colors duration-200 ${isActive ? 'text-white' : 'text-white'} ${isSubItem ? 'scale-90' : ''}`}>
                         {icon}
                     </span>
 
@@ -179,21 +179,19 @@ const CollapsibleMenu: React.FC<CollapsibleMenuProps> = ({ label, icon, children
                 onClick={handleClick}
                 className={`
                     ${buttonBaseClasses} ${buttonLayoutClasses} 
-                    ${isParentActive
-                        ? 'text-white bg-white/5'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}
+                    'text-white hover:bg-[#1c3d94]'
                 `}
                 aria-expanded={isOpen}
                 title={isCollapsed ? label : undefined}
             >
                 <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-                    <span className={`flex-shrink-0 transition-colors ${isParentActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'}`}>
+                    <span className={`flex-shrink-0 transition-colors 'text-white'`}>
                         {icon}
                     </span>
                     {!isCollapsed && <span className={`ml-3 font-medium text-sm ${isParentActive ? 'text-white' : ''}`}>{label}</span>}
                 </div>
                 {!isCollapsed && (
-                    <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} ${isParentActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} text-white`} />
                 )}
             </button>
             {/* Show submenu items when expanded (both in collapsed and normal mode) */}
@@ -214,7 +212,7 @@ const Sidebar: React.FC<{ isOpen: boolean; isCollapsed: boolean; }> = ({ isOpen,
         <aside className={`
             fixed md:relative inset-y-0 left-0 z-50
             ${isCollapsed ? 'w-20' : 'w-72'} 
-            bg-slate-900
+            bg-[#2962ff] text-white
             transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 
             transition-all duration-300 ease-in-out 
             flex flex-col
@@ -240,12 +238,12 @@ const Sidebar: React.FC<{ isOpen: boolean; isCollapsed: boolean; }> = ({ isOpen,
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto overflow-x-hidden py-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 <ul className="space-y-1">
-                    <div className={`px-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
+                    <div className={`px-6 mb-2 text-xs font-semibold text-white uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
                         Principal
                     </div>
                     <li><NavItem to="/dashboard" icon={<DashboardIcon />} label="Tableau de bord" isCollapsed={isCollapsed} /></li>
 
-                    <div className={`px-6 mt-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
+                    <div className={`px-6 mt-6 mb-2 text-xs font-semibold text-white uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
                         Gestion
                     </div>
                     <CollapsibleMenu label="Dossiers" icon={<FolderIcon />} paths={["/dossiers"]} isCollapsed={isCollapsed}>
@@ -290,7 +288,7 @@ const Sidebar: React.FC<{ isOpen: boolean; isCollapsed: boolean; }> = ({ isOpen,
                         <li><NavItem to="/traitement/suppression" label="Suppression dossiers" icon={<TrashIcon {...iconSubMenuProps} />} isSubItem isCollapsed={isCollapsed} /></li>
                     </CollapsibleMenu>
 
-                    <div className={`px-6 mt-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
+                    <div className={`px-6 mt-6 mb-2 text-xs font-semibold text-white uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>
                         Configuration
                     </div>
                     <CollapsibleMenu
