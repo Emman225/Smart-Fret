@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { saveAs } from 'file-saver';
-import { useAuth } from '../context/AppContext';
+import { useAuth, useOrigines } from '../context/AppContext';
+import useArmateurs from '../hooks/useArmateurs';
 import { FolderIcon, GlobeIcon, BanknotesIcon, UserGroupIcon } from '../components/icons';
 import { getDossiers } from '../services/dossierService';
 import { getArmateursStats } from '../services/armateurService';
@@ -124,17 +126,47 @@ const BarChart: React.FC<{ data: { label: string; value: number }[]; maxBars?: n
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const { origines, fetchOrigines } = useOrigines();
+  const { armateurs, fetchArmateurs } = useArmateurs();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalDossiers, setTotalDossiers] = useState(0);
   const [recentDossiers, setRecentDossiers] = useState<any[]>([]);
-  const [armateurStats, setArmateurStats] = useState<Array<{ raison_sociale: string; nombre_dossiers: number }>>([]);
   const [pageSample, setPageSample] = useState<any[]>([]);
   const [sampleSize, setSampleSize] = useState<number>(10);
   const [metric, setMetric] = useState<string>('bsc');
   const [barGroup, setBarGroup] = useState<'origine' | 'armateur'>('origine');
   const [barTopN, setBarTopN] = useState<number>(10);
   const [barSort, setBarSort] = useState<'asc' | 'desc'>('desc');
+
+  const origineMap = useMemo(() => {
+    const map = new Map<string, string>();
+    origines.forEach(o => {
+      const origineId = String((o as any).id || (o as any).idOrigine || (o as any).IdOrigine || '');
+      const origineName = (o as any).nomPays || (o as any).NomPays || '';
+      if (origineId) map.set(origineId, origineName);
+    });
+    return map;
+  }, [origines]);
+
+  const armateurMap = useMemo(() => {
+    const map = new Map<string, string>();
+    armateurs.forEach(a => {
+      // The hook returns Armateur objects with IdArmat and NomArmat
+      const id = String(a.IdArmat);
+      const name = a.NomArmat;
+      if (id) map.set(id, name);
+    });
+    return map;
+  }, [armateurs]);
+
+  useEffect(() => {
+    if (fetchOrigines && origines.length === 0) fetchOrigines();
+    if (fetchArmateurs && armateurs.length === 0) fetchArmateurs();
+  }, []);
+
+
 
   const getMetricValue = (d: any, key: string) => {
     if (key === 'bsc') return Number(d.montantBSC) || 0;
@@ -156,6 +188,14 @@ const DashboardPage: React.FC = () => {
   const totalMetric = useMemo(() => pageSample.reduce((acc, d) => acc + getMetricValue(d, metric), 0), [pageSample, metric]);
   const formattedTotalMetric = useMemo(() => new Intl.NumberFormat('fr-FR').format(totalMetric), [totalMetric]);
   const uniqueOrigines = useMemo(() => new Set(pageSample.map(d => d.origine)).size, [pageSample]);
+  const originCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    pageSample.forEach(d => {
+      const key = d.origine || 'Inconnu';
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    return map;
+  }, [pageSample]);
   const uniqueVendeurs = useMemo(() => new Set(pageSample.map(d => d.vendeur)).size, [pageSample]);
   const generatePalette = (n: number) => {
     const arr: string[] = [];
@@ -182,6 +222,46 @@ const DashboardPage: React.FC = () => {
     });
     return arr;
   }, [pageSample, barGroup, metric, barSort]);
+
+  const armateurStats = useMemo(() => {
+    if (pageSample.length === 0) return [];
+    const statsMap = new Map<string, number>();
+    pageSample.forEach((d: any) => {
+      const armateurId = String(d.armateur || '');
+      const teu = Number(d.nbreTEU) || 0;
+      if (armateurId) {
+        statsMap.set(armateurId, (statsMap.get(armateurId) || 0) + teu);
+      }
+    });
+
+    return Array.from(statsMap.entries())
+      .map(([id, teu]) => ({
+        raison_sociale: armateurMap.get(id) || id,
+        nombre_dossiers: teu
+      }))
+      .sort((a, b) => b.nombre_dossiers - a.nombre_dossiers);
+  }, [pageSample, armateurMap]);
+
+  const origineStats = useMemo(() => {
+    if (pageSample.length === 0) return [];
+    const statsMap = new Map<string, number>();
+    pageSample.forEach((d: any) => {
+      const origineId = String(d.origine || '');
+      const teu = Number(d.nbreTEU) || 0;
+      if (origineId) {
+        statsMap.set(origineId, (statsMap.get(origineId) || 0) + teu);
+      }
+    });
+
+    return Array.from(statsMap.entries())
+      .map(([id, teu]) => ({
+        raison_sociale: origineMap.get(id) || id,
+        nombre_dossiers: teu
+      }))
+      .sort((a, b) => b.nombre_dossiers - a.nombre_dossiers);
+  }, [pageSample, origineMap]);
+
+
 
   const exportBarCsv = () => {
     const rows = groupedBy.slice(0, barTopN);
@@ -343,12 +423,7 @@ const DashboardPage: React.FC = () => {
         setRecentDossiers(dossiersRes.data.slice(0, Math.min(5, dossiersRes.data.length)));
         setPageSample(dossiersRes.data);
 
-        try {
-          const stats = await getArmateursStats();
-          if (!isActive) return;
-          const normalized = Array.isArray(stats) ? stats.map(s => ({ raison_sociale: s.raison_sociale, nombre_dossiers: s.nombre_dossiers })) : [];
-          setArmateurStats(normalized);
-        } catch (e) { }
+
       } catch (e: any) {
         if (!isActive) return;
         setError(e?.message || 'Erreur lors du chargement des données');
@@ -437,14 +512,15 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="divide-y divide-slate-100">
                 {recentDossiers.map((d) => (
-                  <div key={d.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer">
+                  <div key={d.id} onClick={() => navigate(`/dossiers/${d.id}/edit`)} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer">
                     <div className="flex items-center space-x-4 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                         <FolderIcon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{d.numDossier || d.bl || d.id}</p>
-                        <p className="text-xs text-slate-500 truncate">{d.vendeur} • {d.origine}</p>
+                        <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{d.numeroDossier || d.bl || d.id}</p>
+                        <p className="text-xs text-slate-500 truncate">{d.vendeur}</p>
+                        <p className="text-xs text-slate-500 truncate">Origine: {origineMap.get(String(d.origine)) || (typeof d.origine === 'string' ? d.origine : (d.origine?.nom || d.origine?.label || (d.origine as any)?.nomPays || (d.origine as any)?.NomPays || '—'))}</p>
                       </div>
                     </div>
                     <div className="text-right pl-4">
@@ -462,7 +538,7 @@ const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h2 className="text-lg font-bold text-slate-800">Top Armateurs</h2>
-            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Volume</span>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">T.E.U</span>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[400px]">
             {loading && armateurStats.length === 0 ? (
@@ -483,7 +559,7 @@ const DashboardPage: React.FC = () => {
                       <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, (a.nombre_dossiers / (armateurStats[0]?.nombre_dossiers || 1)) * 100)}%` }}></div>
                       </div>
-                      <p className="text-xs font-bold text-slate-600 w-12 text-right">{a.nombre_dossiers} dos.</p>
+                      <p className="text-xs font-bold text-slate-600 w-12 text-right">{a.nombre_dossiers} TEU</p>
                     </div>
                   </div>
                 ))}
@@ -496,12 +572,12 @@ const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <h3 className="text-lg font-bold text-slate-800 mb-6">Répartition des origines</h3>
-          {pageSample.length === 0 ? (
+          {origineStats.length === 0 ? (
             <div className="text-center py-10 text-slate-500">Aucune donnée à afficher</div>
           ) : (
             <PieChart
-              data={Array.from(new Map(pageSample.map(d => [d.origine || 'Inconnu', 0])).keys()).map(label => ({ label, value: pageSample.filter(d => (d.origine || 'Inconnu') === label).length }))}
-              colors={generatePalette(new Set(pageSample.map(d => d.origine || 'Inconnu')).size || 1)}
+              data={origineStats.slice(0, 10).map(s => ({ label: s.raison_sociale || 'Inconnu', value: s.nombre_dossiers || 0 }))}
+              colors={generatePalette(Math.min(10, origineStats.length) || 1)}
               size={220}
               thickness={40}
             />
@@ -522,7 +598,7 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+      {/* <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <h3 className="text-lg font-bold text-slate-800">Analyse détaillée</h3>
@@ -572,8 +648,8 @@ const DashboardPage: React.FC = () => {
             Exporter PDF
           </button>
         </div>
-      </div>
-    </div>
+      </div> */}
+    </div >
   );
 };
 

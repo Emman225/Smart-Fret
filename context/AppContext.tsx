@@ -1,21 +1,14 @@
 
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
-// Déclaration de type pour import.meta.env
-declare global {
-  interface ImportMeta {
-    readonly env: {
-      readonly VITE_API_BASE_URL: string;
-      [key: string]: string | undefined;
-    };
-  }
-}
+
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Dossier, User, Armateur, TypeDossier, Navire, CategorieProduit, Produit } from '../types';
 import { handleApiError } from '../services/authService';
 import { Origine } from '../types/index';
 import { getOrigines, getOrigineById as getOrigineByIdService, createOrigine, updateOrigine as updateOrigineService, deleteOrigine as deleteOrigineService } from '../services/origineService';
+import { getArmateurs } from '../services/armateurService';
 import { mockDossiers, mockUsers, mockArmateurs, mockOrigines, mockTypeDossiers, mockNavires, mockCategorieProduits, mockProduits } from '../data/mockData';
 
 // Configuration d'axios pour envoyer les cookies avec chaque requête
@@ -117,6 +110,7 @@ interface ArmateurContextType {
   addArmateur: (armateur: Omit<Armateur, 'id'>) => void;
   updateArmateur: (armateur: Armateur) => void;
   deleteArmateur: (id: string) => void;
+  fetchArmateurs: () => Promise<void>;
 }
 
 const ArmateurContext = createContext<ArmateurContextType | undefined>(undefined);
@@ -1532,12 +1526,28 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }), []);
 
   const armateurContextValue = useMemo(() => ({
-    armateurs: [],
-    getArmateurById: (id: string) => undefined,
-    addArmateur: () => { },
-    updateArmateur: () => { },
-    deleteArmateur: () => { }
-  }), []);
+    armateurs,
+    getArmateurById,
+    addArmateur,
+    updateArmateur,
+    deleteArmateur,
+    fetchArmateurs: async () => {
+      try {
+        const response = await getArmateurs();
+        if (response.success) {
+          const mappedArmateurs = response.data.map((a: any) => ({
+            id: String(a.IdArmat || a.id),
+            armateur: a.NomArmat || a.armateur,
+            contact: a.ContactArmat || a.contact,
+            email: a.EmailArmat || a.email
+          }));
+          setArmateurs(mappedArmateurs);
+        }
+      } catch (error) {
+        console.error('Error fetching armateurs:', error);
+      }
+    }
+  }), [armateurs]);
 
   const typeDossierContextValue = useMemo<TypeDossierContextType>(() => ({
     typeDossiers,
