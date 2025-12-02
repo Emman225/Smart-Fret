@@ -513,84 +513,82 @@ const DossierFormPage: React.FC = () => {
                             <DetailAdminSubSection register={register} fieldName="magasinage" title="Magasinage" />
                         </div>
                     </FormSection>
+                    <div className="mt-2">
+                        <FormSection title="T.E.U (Conteneurs)">
+                            <div className="max-h-60 overflow-y-auto pr-2 space-y-3">
+                                {teusFields.map((field, index) => (
+                                    <div key={field.id} className="flex items-center space-x-2">
+                                        <div className="flex-1">
+                                            <Input {...register(`teus.${index}.numero`, { required: 'Le numéro du conteneur est requis' })} placeholder={`N° Conteneur ${index + 1}`} {...compactInputProps} />
+                                            {errors.teus?.[index]?.numero && (
+                                                <p className="text-red-500 text-xs mt-1">{(errors.teus[index] as any).numero.message}</p>
+                                            )}
+                                        </div>
+                                        <button type="button" onClick={() => removeTeu(index)} className="text-red-500 p-1 rounded-full hover:bg-red-100"><DeleteIcon className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={() => appendTeu({ id: createTempId('teu'), numero: '' })} className="mt-3 flex items-center text-sm font-medium text-primary hover:text-blue-700 transition-colors">
+                                <PlusCircleIcon className="mr-2" /> Ajouter un conteneur
+                            </button>
+                        </FormSection>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-                <div className="lg:col-span-1">
-                    <FormSection title="T.E.U (Conteneurs)">
-                        <div className="max-h-60 overflow-y-auto pr-2 space-y-3">
-                            {teusFields.map((field, index) => (
-                                <div key={field.id} className="flex items-center space-x-2">
-                                    <div className="flex-1">
-                                        <Input {...register(`teus.${index}.numero`, { required: 'Le numéro du conteneur est requis' })} placeholder={`N° Conteneur ${index + 1}`} {...compactInputProps} />
-                                        {errors.teus?.[index]?.numero && (
-                                            <p className="text-red-500 text-xs mt-1">{(errors.teus[index] as any).numero.message}</p>
-                                        )}
-                                    </div>
-                                    <button type="button" onClick={() => removeTeu(index)} className="text-red-500 p-1 rounded-full hover:bg-red-100"><DeleteIcon className="w-4 h-4" /></button>
-                                </div>
-                            ))}
-                        </div>
-                        <button type="button" onClick={() => appendTeu({ id: createTempId('teu'), numero: '' })} className="mt-3 flex items-center text-sm font-medium text-primary hover:text-blue-700 transition-colors">
-                            <PlusCircleIcon className="mr-2" /> Ajouter un conteneur
-                        </button>
-                    </FormSection>
-                </div>
-                <div className="lg:col-span-2">
-                    <FormSection title="Règlements">
-                        <DynamicTable title="" onAdd={() => appendReglement({ id: createTempId('reglement'), date: '', reference: '', modePaiement: 'Virement', banque: '', montantDevise: 0, devise: 'USD', coursDevise: 0, montantCFA: 0, montantTPS: 0, fraisBancaires: 0 })} addLabel="Ajouter un règlement">
-                            <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                <thead className="sticky top-0 z-10 bg-slate-900 text-white"><tr className="text-left text-xs font-medium uppercase">
-                                    <th className="px-2 py-1">Date</th>
-                                    <th className="px-2 py-1">Réf.</th>
-                                    <th className="px-2 py-1">Mode</th>
-                                    <th className="px-2 py-1">Banque</th>
-                                    <th className="px-2 py-1">Mt Devise</th>
-                                    <th className="px-2 py-1">Devise</th>
-                                    <th className="px-2 py-1">Cours</th>
-                                    <th className="px-2 py-1">Mt CFA</th>
-                                    <th className="px-2 py-1">Mt TPS</th>
-                                    <th className="px-2 py-1">Frais Banc.</th>
-                                    <th className="w-12"></th>
-                                </tr></thead>
-                                <tbody className="bg-white divide-y divide-slate-200">
-                                    {reglementsFields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="p-1 min-w-[8rem]"><Input type="date" className={reglementInputClass} {...register(`reglements.${index}.date`)} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Input className={reglementInputClass} {...register(`reglements.${index}.reference`)} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Select className={reglementInputClass} {...register(`reglements.${index}.modePaiement`)}><option>Virement</option><option>Chèque</option></Select></td>
-                                            <td className="p-1 min-w-[8rem]"><Input className={reglementInputClass} {...register(`reglements.${index}.banque`)} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantDevise`, {
-                                                valueAsNumber: true, onChange: (e) => {
-                                                    const md = (e.target as HTMLInputElement).valueAsNumber;
-                                                    const cdRaw = getValues(`reglements.${index}.coursDevise` as const) ?? getValues('cours');
-                                                    const cd = Number.isFinite(Number(cdRaw)) ? Number(cdRaw) : 0;
-                                                    const cfa = (Number.isFinite(md) ? md : 0) * cd;
-                                                    setValue(`reglements.${index}.montantCFA` as const, cfa, { shouldDirty: true });
-                                                }
-                                            })} /></td>
-                                            <td className="p-1 min-w-[6rem]"><Select className={reglementInputClass} {...register(`reglements.${index}.devise`)}><option>USD</option><option>EUR</option></Select></td>
-                                            <td className="p-1 min-w-[7rem]"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.coursDevise`, {
-                                                valueAsNumber: true, onChange: (e) => {
-                                                    const cd = (e.target as HTMLInputElement).valueAsNumber;
-                                                    const mdRaw = getValues(`reglements.${index}.montantDevise` as const);
-                                                    const md = Number.isFinite(Number(mdRaw)) ? Number(mdRaw) : 0;
-                                                    const cfa = md * (Number.isFinite(cd) ? cd : 0);
-                                                    setValue(`reglements.${index}.montantCFA` as const, cfa, { shouldDirty: true });
-                                                }
-                                            })} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantCFA`, { valueAsNumber: true })} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantTPS`, { valueAsNumber: true })} /></td>
-                                            <td className="p-1 min-w-[8rem]"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.fraisBancaires`, { valueAsNumber: true })} /></td>
-                                            <td className="p-1 text-center"><button type="button" onClick={() => removeReglement(index)} className="text-red-500 p-1 rounded-full hover:bg-red-100"><DeleteIcon className="w-4 h-4" /></button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </DynamicTable>
-                    </FormSection>
-                </div>
+            <div className="w-full mt-2">
+                <FormSection title="Règlements">
+                    <DynamicTable title="" onAdd={() => appendReglement({ id: createTempId('reglement'), date: '', reference: '', modePaiement: 'Virement', banque: '', montantDevise: 0, devise: 'USD', coursDevise: 0, montantCFA: 0, montantTPS: 0, fraisBancaires: 0 })} addLabel="Ajouter un règlement">
+                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead className="sticky top-0 z-10 bg-slate-900 text-white"><tr className="text-left text-xs font-medium uppercase">
+                                <th className="px-2 py-1">Date</th>
+                                <th className="px-2 py-1">Réf.</th>
+                                <th className="px-2 py-1">Mode</th>
+                                <th className="px-2 py-1">Banque</th>
+                                <th className="px-2 py-1">Mt Devise</th>
+                                <th className="px-2 py-1">Devise</th>
+                                <th className="px-2 py-1">Cours</th>
+                                <th className="px-2 py-1">Mt CFA</th>
+                                <th className="px-2 py-1">Mt TPS</th>
+                                <th className="px-2 py-1">Frais Banc.</th>
+                                <th className="w-12"></th>
+                            </tr></thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                                {reglementsFields.map((field, index) => (
+                                    <tr key={field.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-1"><Input type="date" className={reglementInputClass} {...register(`reglements.${index}.date`)} /></td>
+                                        <td className="p-1"><Input className={reglementInputClass} {...register(`reglements.${index}.reference`)} /></td>
+                                        <td className="p-1"><Select className={reglementInputClass} {...register(`reglements.${index}.modePaiement`)}><option>Virement</option><option>Chèque</option></Select></td>
+                                        <td className="p-1"><Input className={reglementInputClass} {...register(`reglements.${index}.banque`)} /></td>
+                                        <td className="p-1"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantDevise`, {
+                                            valueAsNumber: true, onChange: (e) => {
+                                                const md = (e.target as HTMLInputElement).valueAsNumber;
+                                                const cdRaw = getValues(`reglements.${index}.coursDevise` as const) ?? getValues('cours');
+                                                const cd = Number.isFinite(Number(cdRaw)) ? Number(cdRaw) : 0;
+                                                const cfa = (Number.isFinite(md) ? md : 0) * cd;
+                                                setValue(`reglements.${index}.montantCFA` as const, cfa, { shouldDirty: true });
+                                            }
+                                        })} /></td>
+                                        <td className="p-1"><Select className={reglementInputClass} {...register(`reglements.${index}.devise`)}><option>USD</option><option>EUR</option></Select></td>
+                                        <td className="p-1"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.coursDevise`, {
+                                            valueAsNumber: true, onChange: (e) => {
+                                                const cd = (e.target as HTMLInputElement).valueAsNumber;
+                                                const mdRaw = getValues(`reglements.${index}.montantDevise` as const);
+                                                const md = Number.isFinite(Number(mdRaw)) ? Number(mdRaw) : 0;
+                                                const cfa = md * (Number.isFinite(cd) ? cd : 0);
+                                                setValue(`reglements.${index}.montantCFA` as const, cfa, { shouldDirty: true });
+                                            }
+                                        })} /></td>
+                                        <td className="p-1"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantCFA`, { valueAsNumber: true })} /></td>
+                                        <td className="p-1"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.montantTPS`, { valueAsNumber: true })} /></td>
+                                        <td className="p-1"><Input type="number" className={reglementInputClass} {...register(`reglements.${index}.fraisBancaires`, { valueAsNumber: true })} /></td>
+                                        <td className="p-1 text-center"><button type="button" onClick={() => removeReglement(index)} className="text-red-500 p-1 rounded-full hover:bg-red-100"><DeleteIcon className="w-4 h-4" /></button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </DynamicTable>
+                </FormSection>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 p-4 flex justify-end space-x-4 shadow-lg z-30">
