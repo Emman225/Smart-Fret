@@ -239,12 +239,14 @@ export const authService = {
         console.log('Connexion sans token CSRF');
       }
 
-      // 5. Envoi de la requête de connexion
-      console.log('Envoi de la requête de connexion à:', `${API_BASE_URL}/auth/login`);
+      // 5. Envoi de la requête de connexion via le proxy backend
+      // Le proxy contourne la protection DDoS LWS en faisant la requête en interne
+      const loginEndpoint = `${API_BASE_URL}/proxy/login`;
+      console.log('Envoi de la requête de connexion à:', loginEndpoint);
       console.log('Données de la requête:', requestData);
 
       const response = await fetchWithTimeout(
-        `${API_BASE_URL}/auth/login`,
+        loginEndpoint,
         {
           method: 'POST',
           headers,
@@ -255,14 +257,21 @@ export const authService = {
       );
 
       // 5. Traitement de la réponse
+      const responseText = await response.text();
       let responseData;
+
       try {
-        responseData = await response.json();
+        responseData = JSON.parse(responseText);
         console.log('Réponse du serveur:', responseData);
       } catch (parseError) {
         console.error('Erreur lors de l\'analyse de la réponse JSON:', parseError);
-        const textResponse = await response.text();
-        console.error('Réponse brute du serveur:', textResponse);
+        console.error('Réponse brute du serveur:', responseText);
+
+        // Détection de la protection DDoS LWS
+        if (responseText.includes('LWS Protection DDoS') || responseText.includes('<!DOCTYPE')) {
+          throw new Error('La protection DDoS du serveur bloque les requêtes. Veuillez contacter l\'administrateur ou réessayer plus tard.');
+        }
+
         throw new Error('Format de réponse inattendu du serveur');
       }
 

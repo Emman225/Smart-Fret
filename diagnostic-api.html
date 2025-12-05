@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Direct - Diagnostic DDoS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        .container {
+            background: #334155;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #475569;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        button {
+            background: linear-gradient(to right, #3b82f6, #6366f1);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        pre {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            max-height: 400px;
+            font-size: 12px;
+            border: 1px solid #475569;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #065f46;
+            color: #6ee7b7;
+        }
+
+        .status.error {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .status.warning {
+            background: #78350f;
+            color: #fcd34d;
+        }
+
+        .status.info {
+            background: #1e3a8a;
+            color: #93c5fd;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 Diagnostic Protection DDoS LWS</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">Test des requêtes API avec différentes configurations</p>
+
+        <div class="test-section">
+            <h2 style="color: #60a5fa; margin-top: 0;">Test 1: Requête GET (Type Dossiers)</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Cette requête devrait passer à travers le proxy</p>
+            <button onclick="testGetRequest()">Tester GET /api/type-dossiers</button>
+            <div id="result-get"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 style="color: #60a5fa; margin-top: 0;">Test 2: Requête POST Login (Via Proxy)</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Test de connexion via le proxy Vite</p>
+
+            <label for="username">Nom d'utilisateur:</label>
+            <input type="text" id="username" placeholder="Entrez votre identifiant" value="A">
+
+            <label for="password">Mot de passe:</label>
+            <input type="password" id="password" placeholder="Entrez votre mot de passe" value="123">
+
+            <button onclick="testLoginProxy()">Tester POST /api/auth/login (Proxy)</button>
+            <div id="result-login-proxy"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 style="color: #60a5fa; margin-top: 0;">Test 3: Requête POST Login (Direct)</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Test direct vers l'API (pour comparaison)</p>
+            <button onclick="testLoginDirect()">Tester POST https://api.acexgroupe.com/api/auth/login (Direct)</button>
+            <div id="result-login-direct"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 style="color: #60a5fa; margin-top: 0;">Test 4: CSRF Token</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Vérification du token CSRF via Sanctum</p>
+            <button onclick="testCsrfToken()">Tester GET /sanctum/csrf-cookie</button>
+            <div id="result-csrf"></div>
+        </div>
+    </div>
+
+    <script>
+        async function displayResult(elementId, response, responseText, method, url) {
+            const element = document.getElementById(elementId);
+
+            let statusClass = 'info';
+            let statusMessage = 'En cours...';
+
+            if (response) {
+                if (response.ok) {
+                    statusClass = 'success';
+                    statusMessage = `✅ Succès (${response.status})`;
+                } else if (response.status >= 400 && response.status < 500) {
+                    statusClass = 'warning';
+                    statusMessage = `⚠️ Erreur client (${response.status})`;
+                } else {
+                    statusClass = 'error';
+                    statusMessage = `❌ Erreur serveur (${response.status})`;
+                }
+            } else {
+                statusClass = 'error';
+                statusMessage = '❌ Échec de la requête';
+            }
+
+            // Vérification spécifique pour la protection DDoS
+            const isDDoSProtection = responseText.includes('LWS Protection DDoS') ||
+                responseText.includes('Anubis') ||
+                (responseText.includes('<!DOCTYPE') && responseText.includes('challenge'));
+
+            if (isDDoSProtection) {
+                statusClass = 'error';
+                statusMessage = '🛡️ Bloqué par la Protection DDoS LWS';
+            }
+
+            element.innerHTML = `
+                <div class="status ${statusClass}">${statusMessage}</div>
+                <p style="margin: 10px 0; color: #cbd5e1;"><strong>Requête:</strong> ${method} ${url}</p>
+                <p style="margin: 10px 0; color: #cbd5e1;"><strong>Type de réponse:</strong> ${response ? response.headers.get('content-type') || 'Non spécifié' : 'N/A'}</p>
+                ${isDDoSProtection ? '<p style="color: #fca5a5; font-weight: 600;">⚠️ La page de challenge DDoS a été retournée au lieu de la réponse API</p>' : ''}
+                <details>
+                    <summary style="cursor: pointer; color: #60a5fa; margin: 15px 0; font-weight: 600;">📄 Voir la réponse brute</summary>
+                    <pre>${escapeHtml(responseText.substring(0, 5000))}${responseText.length > 5000 ? '\n\n... (truncated)' : ''}</pre>
+                </details>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function testGetRequest() {
+            const elementId = 'result-get';
+            document.getElementById(elementId).innerHTML = '<div class="status info">⏳ Test en cours...</div>';
+
+            try {
+                const response = await fetch('/api/type-dossiers', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const text = await response.text();
+                await displayResult(elementId, response, text, 'GET', '/api/type-dossiers');
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = `
+                    <div class="status error">❌ Erreur: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testLoginProxy() {
+            const elementId = 'result-login-proxy';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            document.getElementById(elementId).innerHTML = '<div class="status info">⏳ Test de connexion...</div>';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        LoginUser: username,
+                        PwdUser: password
+                    })
+                });
+
+                const text = await response.text();
+                await displayResult(elementId, response, text, 'POST', '/api/auth/login (via proxy)');
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = `
+                    <div class="status error">❌ Erreur: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testLoginDirect() {
+            const elementId = 'result-login-direct';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            document.getElementById(elementId).innerHTML = '<div class="status info">⏳ Test de connexion directe...</div>';
+
+            try {
+                const response = await fetch('https://api.acexgroupe.com/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        LoginUser: username,
+                        PwdUser: password
+                    })
+                });
+
+                const text = await response.text();
+                await displayResult(elementId, response, text, 'POST', 'https://api.acexgroupe.com/api/auth/login (direct)');
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = `
+                    <div class="status error">❌ Erreur: ${error.message}</div>
+                    <p style="color: #cbd5e1; margin-top: 10px;">Cette erreur est normale si le CORS bloque les requêtes directes.</p>
+                `;
+            }
+        }
+
+        async function testCsrfToken() {
+            const elementId = 'result-csrf';
+            document.getElementById(elementId).innerHTML = '<div class="status info">⏳ Récupération du token CSRF...</div>';
+
+            try {
+                const response = await fetch('/sanctum/csrf-cookie', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const text = await response.text();
+
+                // Vérifier les cookies
+                const cookies = document.cookie;
+                const hasCsrfCookie = cookies.includes('XSRF-TOKEN');
+
+                await displayResult(elementId, response, text + '\n\n[Cookies]: ' + cookies, 'GET', '/sanctum/csrf-cookie');
+
+                if (hasCsrfCookie) {
+                    document.getElementById(elementId).innerHTML += `
+                        <div class="status success">✅ Token CSRF trouvé dans les cookies</div>
+                    `;
+                } else {
+                    document.getElementById(elementId).innerHTML += `
+                        <div class="status warning">⚠️ Token CSRF non trouvé dans les cookies</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = `
+                    <div class="status error">❌ Erreur: ${error.message}</div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>
